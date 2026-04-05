@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Windows XP Ultimate Simulator • Реални икони + Интеграция</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 20% 30%, #0a2f2a, #03100e);
+            font-family: 'Segoe UI', 'Tahoma', 'Microsoft Sans Serif', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* ретро анимации */
+        @keyframes glowPulse {
+            0% { text-shadow: 0 0 2px #0f0, 0 0 4px #0f0; }
+            100% { text-shadow: 0 0 8px #0f0, 0 0 12px #0f0; }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* начален хъб */
+        .hub-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ffd966;
+            text-shadow: 3px 3px 0 #5a3e00;
+            font-size: 2.2rem;
+            animation: glowPulse 1.5s infinite alternate;
+        }
+        .version-counter {
+            background: #1e1e2fcc;
+            backdrop-filter: blur(6px);
+            display: inline-block;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-size: 1.2rem;
+            margin-top: 12px;
+            color: #eee;
+            border: 1px solid gold;
+        }
+        .icons-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 28px;
+            margin: 40px 0;
+            animation: fadeInUp 0.5s ease;
+        }
+        .win-card {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            padding: 20px 16px;
+            text-align: center;
+            width: 150px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,215,0,0.4);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            color: white;
+        }
+        .win-card:hover {
+            transform: scale(1.05);
+            background: rgba(0, 80, 160, 0.8);
+            border-color: gold;
+            box-shadow: 0 0 18px gold;
+        }
+        .win-icon {
+            font-size: 64px;
+            margin-bottom: 12px;
+        }
+        .win-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+        .win-year {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        .win-desc {
+            font-size: 0.7rem;
+            margin-top: 8px;
+        }
+        .xp-badge {
+            background: #2a7f2a;
+            border-radius: 20px;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            margin-top: 8px;
+            display: inline-block;
+        }
+        .info-text {
+            text-align: center;
+            color: #ccc;
+            background: #000000aa;
+            width: fit-content;
+            margin: 20px auto;
+            padding: 12px 24px;
+            border-radius: 48px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* XP СИМУЛАТОР (главен прозорец) */
+        .simulator-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(6px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden;
+        }
+        .simulator-overlay.active {
+            visibility: visible;
+        }
+        .xp-main-window {
+            width: 1300px;
+            max-width: 94vw;
+            height: 850px;
+            max-height: 88vh;
+            background: #dce9f5;
+            border-radius: 16px 16px 8px 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 40px black;
+            animation: fadeInUp 0.2s;
+        }
+        .titlebar-xp {
+            background: linear-gradient(90deg, #0059dd, #2a7ae0);
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-weight: bold;
+            cursor: default;
+        }
+        .desktop-area {
+            flex: 1;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><rect width="800" height="600" fill="%23367c3a"/><path d="M0 450 L800 380 L800 600 L0 600 Z" fill="%234d8c42"/><circle cx="680" cy="100" r="40" fill="%23fff9c4" opacity="0.6"/></svg>');
+            background-size: cover;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Икони на работния плот (като истински XP) */
+        .desktop-icons {
+            position: absolute;
+            left: 16px;
+            top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            z-index: 20;
+        }
+        .xp-icon {
+            background: transparent;
+            padding: 8px 6px;
+            border-radius: 4px;
+            width: 110px;
+            text-align: center;
+            color: white;
+            cursor: pointer;
+            transition: 0.05s linear;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .xp-icon:hover {
+            background: rgba(0, 100, 200, 0.4);
+        }
+        .xp-icon.selected {
+            background: #1e5fc7;
+            border: 1px solid #c0e0ff;
+        }
+        .icon-img {
+            font-size: 48px;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5));
+        }
+        .icon-label {
+            font-size: 12px;
+            font-weight: 500;
+            text-shadow: 1px 1px 0 #1e3a5f;
+            background: transparent;
+            padding: 2px 6px;
+            border-radius: 12px;
+        }
+        .windows-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .app-window {
+            position: absolute;
+            background: #f0f0f0;
+            border: 2px solid #0a3b6e;
+            border-radius: 8px;
+            min-width: 280px;
+            min-height: 200px;
+            box-shadow: 8px 8px 20px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            z-index: 200;
+            resize: both;
+            overflow: auto;
+        }
+        .app-title {
+            background: linear-gradient(90deg, #0c3e7a, #1c5bb0);
+            color: white;
+            padding: 6px 10px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+        }
+        .app-inner {
+            flex: 1;
+            background: white;
+            padding: 12px;
+            overflow: auto;
+        }
+        .taskbar-xp {
+            background: #1c4e9c;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-top: 1px solid #7ca5e0;
+        }
+        .start-menu-btn {
+            background: #2b731b;
+            padding: 6px 18px;
+            border-radius: 0 12px 12px 0;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .taskbar-buttons {
+            display: flex;
+            gap: 6px;
+            margin-left: 20px;
+        }
+        .taskbar-item {
+            background: #2c6bc0;
+            padding: 4px 14px;
+            border-radius: 6px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .tray-clock {
+            margin-left: auto;
+            background: #0d2f62;
+            padding: 4px 14px;
+            border-radius: 20px;
+            color: white;
+        }
+        .screensaver {
+            position: fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            background: black;
+            color: #0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            z-index: 20000;
+            font-family: monospace;
+            display: none;
+            animation: blinkText 2s infinite;
+        }
+        @keyframes blinkText {
+            0% { opacity: 1; text-shadow: 0 0 5px lime; }
+            50% { opacity: 0.7; text-shadow: 0 0 20px white; }
+        }
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4,1fr);
+            gap: 6px;
+            margin-top: 8px;
+        }
+        canvas.paint-canvas {
+            border: 1px solid gray;
+            background: white;
+            cursor: crosshair;
+        }
+        .mine-cell {
+            background: #c0c0c0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px outset white;
+        }
+        /* старт меню стил XP */
+        .start-menu-xp {
+            position: absolute;
+            bottom: 46px;
+            left: 10px;
+            width: 280px;
+            background: #eaf3ff;
+            border: 1px solid #1e6ab0;
+            border-radius: 10px;
+            z-index: 9999;
+            box-shadow: 4px 4px 12px black;
+        }
+        .start-header {
+            background: linear-gradient(90deg, #036, #2a6fdb);
+            padding: 12px;
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        .start-items {
+            padding: 6px 0;
+        }
+        .start-item {
+            padding: 8px 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .start-item:hover {
+            background: #2a6fdb;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="hub-container">
+    <div class="header">
+        🪟 WINDOWS MUSEUM
+        <div class="version-counter" id="versionCounter">📀 6 версии Windows (XP пълен симулатор)</div>
+    </div>
+    <div class="icons-grid" id="osGrid">
+        <div class="win-card" data-os="95"><div class="win-icon">🖥️</div><div class="win-title">Windows 95</div><div class="win-year">1995</div><div class="win-desc">Start Menu • Plug & Play</div></div>
+        <div class="win-card" data-os="98"><div class="win-icon">💾</div><div class="win-title">Windows 98</div><div class="win-year">1998</div><div class="win-desc">USB • Active Desktop</div></div>
+        <div class="win-card" data-os="me"><div class="win-icon">🧪</div><div class="win-title">Windows ME</div><div class="win-year">2000</div><div class="win-desc">System Restore</div></div>
+        <div class="win-card" data-os="xp" id="xpCard"><div class="win-icon">🌟</div><div class="win-title">Windows XP</div><div class="win-year">2001 • LEGEND</div><div class="win-desc"><span class="xp-badge">⭐ ПЪЛЕН СИМУЛАТОР ⭐</span></div></div>
+        <div class="win-card" data-os="7"><div class="win-icon">🎨</div><div class="win-title">Windows 7</div><div class="win-year">2009</div><div class="win-desc">Aero Glass</div></div>
+        <div class="win-card" data-os="10"><div class="win-icon">🔷</div><div class="win-title">Windows 10</div><div class="win-year">2015</div><div class="win-desc">Modern UI</div></div>
+    </div>
+    <div class="info-text">
+        ✨ <strong>Windows XP симулатор</strong> – икони като истинския XP, плъзгане, select ефект, всички програми!<br>
+        🚀 За <strong>интеграция с компютъра</strong> (реални файлове и EXE) – пусни <code>python server.py</code> и ще работи локално.
+    </div>
+</div>
+
+<!-- XP СИМУЛАТОР -->
+<div id="xpSimulator" class="simulator-overlay">
+    <div class="xp-main-window">
+        <div class="titlebar-xp"><span>🪟 Windows XP Professional Simulator</span><span id="closeSimXp" style="cursor:pointer; background:#aa2222; padding:0 10px; border-radius:6px;">✖</span></div>
+        <div class="desktop-area" id="xpDesktopArea">
+            <div class="desktop-icons" id="desktopIconsContainer">
+                <!-- Икони като на истински XP -->
+                <div class="xp-icon" data-app="mycomp"><div class="icon-img">🖥️📀</div><div class="icon-label">My Computer</div></div>
+                <div class="xp-icon" data-app="recycle"><div class="icon-img">🗑️</div><div class="icon-label">Recycle Bin</div></div>
+                <div class="xp-icon" data-app="ie"><div class="icon-img">🌐🔵</div><div class="icon-label">Internet Explorer</div></div>
+                <div class="xp-icon" data-app="notepad"><div class="icon-img">📄✏️</div><div class="icon-label">Notepad</div></div>
+                <div class="xp-icon" data-app="calc"><div class="icon-img">🧮</div><div class="icon-label">Calculator</div></div>
+                <div class="xp-icon" data-app="paint"><div class="icon-img">🎨🖌️</div><div class="icon-label">Paint</div></div>
+                <div class="xp-icon" data-app="minesweeper"><div class="icon-img">💣🚩</div><div class="icon-label">Minesweeper</div></div>
+                <div class="xp-icon" data-app="explorer"><div class="icon-img">📁</div><div class="icon-label">File Explorer</div></div>
+                <div class="xp-icon" data-app="cmd"><div class="icon-img">⌨️🖥️</div><div class="icon-label">Command Prompt</div></div>
+            </div>
+            <div class="windows-container" id="windowsContainer"></div>
+            <div class="taskbar-xp">
+                <div class="start-menu-btn" id="xpStartBtn">🪟 Старт</div>
+                <div class="taskbar-buttons" id="xpTaskbarApps"></div>
+                <div class="tray-clock" id="xpClock">--:--</div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="globalScreensaver" class="screensaver">✨ Windows XP ✨<br>движи мишката</div>
+
+<script>
+    // ------------------------ XP СИМУЛАТОР (всички функции + икони с select и плъзгане) ------------------------
+    let openWindowsList = [];
+    let zIndexCounter = 2000;
+    let screensaverTimeout;
+    let xpActive = false;
+    let selectedIcon = null;
+
+    function playXpStartSound() {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = 880;
+            gain.gain.value = 0.15;
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
+            osc.stop(audioCtx.currentTime + 1.2);
+            audioCtx.resume();
+        } catch(e) {}
+    }
+
+    function updateClocks() {
+        const d = new Date();
+        let h = d.getHours() % 12 || 12;
+        let m = d.getMinutes().toString().padStart(2,'0');
+        let timeStr = `${h}:${m}`;
+        let xpClock = document.getElementById('xpClock');
+        if(xpClock) xpClock.innerText = timeStr;
+    }
+    setInterval(updateClocks, 1000);
+
+    function resetScreensaver() {
+        if(!xpActive) return;
+        if(screensaverTimeout) clearTimeout(screensaverTimeout);
+        const ssDiv = document.getElementById('globalScreensaver');
+        if(ssDiv.style.display === 'flex') ssDiv.style.display = 'none';
+        screensaverTimeout = setTimeout(() => {
+            if(xpActive && document.getElementById('xpSimulator').classList.contains('active')) {
+                document.getElementById('globalScreensaver').style.display = 'flex';
+            }
+        }, 40000);
+    }
+    document.onmousemove = () => resetScreensaver();
+    document.onkeydown = () => resetScreensaver();
+    document.getElementById('globalScreensaver')?.addEventListener('click', () => {
+        document.getElementById('globalScreensaver').style.display = 'none';
+        resetScreensaver();
+    });
+
+    // Плъзгане на прозорци
+    function makeDraggable(winEl, titleBar) {
+        let offsetX, offsetY, drag = false;
+        titleBar.onmousedown = (e) => {
+            if(e.target === titleBar || titleBar.contains(e.target)) {
+                drag = true;
+                offsetX = e.clientX - winEl.offsetLeft;
+                offsetY = e.clientY - winEl.offsetTop;
+                winEl.style.zIndex = ++zIndexCounter;
+                e.preventDefault();
+            }
+        };
+        window.onmousemove = (e) => {
+            if(drag && winEl.parentNode) {
+                let left = e.clientX - offsetX;
+                let top = e.clientY - offsetY;
+                let maxLeft = winEl.parentNode.clientWidth - winEl.offsetWidth;
+                let maxTop = winEl.parentNode.clientHeight - winEl.offsetHeight;
+                winEl.style.left = Math.min(Math.max(left,0), maxLeft) + 'px';
+                winEl.style.top = Math.min(Math.max(top,0), maxTop) + 'px';
+            }
+        };
+        window.onmouseup = () => drag = false;
+    }
+
+    function addWindow(title, contentHtml, width=380, height=320) {
+        const container = document.getElementById('windowsContainer');
+        if(!container) return null;
+        const winId = 'win_' + Date.now() + '_' + Math.random();
+        const winDiv = document.createElement('div');
+        winDiv.className = 'app-window';
+        winDiv.id = winId;
+        winDiv.style.width = width + 'px';
+        winDiv.style.height = height + 'px';
+        winDiv.style.left = (50 + openWindowsList.length * 25) + 'px';
+        winDiv.style.top = (70 + openWindowsList.length * 25) + 'px';
+        winDiv.style.zIndex = ++zIndexCounter;
+        winDiv.innerHTML = `<div class="app-title"><span>${title}</span><span class="close-win" data-id="${winId}" style="cursor:pointer;">✖</span></div><div class="app-inner">${contentHtml}</div>`;
+        container.appendChild(winDiv);
+        const titleBar = winDiv.querySelector('.app-title');
+        makeDraggable(winDiv, titleBar);
+        winDiv.querySelector('.close-win').onclick = () => {
+            winDiv.remove();
+            openWindowsList = openWindowsList.filter(id => id !== winId);
+            updateTaskbarButtons();
+        };
+        openWindowsList.push(winId);
+        updateTaskbarButtons();
+        return winDiv;
+    }
+
+    function updateTaskbarButtons() {
+        const bar = document.getElementById('xpTaskbarApps');
+        if(!bar) return;
+        bar.innerHTML = '';
+        openWindowsList.forEach(winId => {
+            const winEl = document.getElementById(winId);
+            if(winEl) {
+                const btn = document.createElement('div');
+                btn.className = 'taskbar-item';
+                btn.innerText = winEl.querySelector('.app-title span')?.innerText || 'прозорец';
+                btn.onclick = () => { winEl.style.zIndex = ++zIndexCounter; };
+                bar.appendChild(btn);
+            }
+        });
+    }
+
+    // Икони select ефект + плъзгане на иконите по десктопа
+    function initDesktopIcons() {
+        const icons = document.querySelectorAll('.xp-icon');
+        icons.forEach(icon => {
+            icon.onclick = (e) => {
+                e.stopPropagation();
+                if(selectedIcon) selectedIcon.classList.remove('selected');
+                icon.classList.add('selected');
+                selectedIcon = icon;
+                const app = icon.getAttribute('data-app');
+                if(app === 'mycomp') openMyComputer();
+                else if(app === 'recycle') openRecycleBin();
+                else if(app === 'ie') openIE();
+                else if(app === 'notepad') openNotepad();
+                else if(app === 'calc') openCalculator();
+                else if(app === 'paint') openPaint();
+                else if(app === 'minesweeper') openMinesweeper();
+                else if(app === 'explorer') openFileExplorer();
+                else if(app === 'cmd') openCMD();
+            };
+            // плъзгане на иконите
+            let isDraggingIcon = false, startX, startY, initialLeft, initialTop;
+            icon.onmousedown = (e) => {
+                if(e.target === icon || icon.contains(e.target)) {
+                    isDraggingIcon = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    const rect = icon.getBoundingClientRect();
+                    const containerRect = document.getElementById('desktopIconsContainer').parentElement.getBoundingClientRect();
+                    initialLeft = rect.left - containerRect.left;
+                    initialTop = rect.top - containerRect.top;
+                    icon.style.position = 'relative';
+                    icon.style.left = '0px';
+                    icon.style.top = '0px';
+                    e.preventDefault();
+                }
+            };
+            window.onmousemove = (e) => {
+                if(isDraggingIcon) {
+                    let dx = e.clientX - startX;
+                    let dy = e.clientY - startY;
+                    let newLeft = initialLeft + dx;
+                    let newTop = initialTop + dy;
+                    icon.style.position = 'absolute';
+                    icon.style.left = newLeft + 'px';
+                    icon.style.top = newTop + 'px';
+                    icon.style.zIndex = '1000';
+                }
+            };
+            window.onmouseup = () => { isDraggingIcon = false; };
+        });
+        document.getElementById('xpDesktopArea')?.addEventListener('click', (e) => {
+            if(!e.target.closest('.xp-icon') && selectedIcon) {
+                selectedIcon.classList.remove('selected');
+                selectedIcon = null;
+            }
+        });
+    }
+
+    // ПРИЛОЖЕНИЯ
+    function openMyComputer() {
+        addWindow('Моят компютър', `<h3>Системни свойства</h3><p>💻 Процесор: Intel Pentium 4 3.0GHz<br>🧠 RAM: 512 MB<br>🖥️ Windows XP SP3<br>📀 Диск C: 38 GB свободни</p><button onclick="window.invokeLocalExplorer()">📂 Отвори реален диск C (ако сървърът работи)</button>`, 380, 280);
+    }
+    window.invokeLocalExplorer = () => {
+        fetch('/list_c_drive').then(r => r.text()).then(txt => alert("Отговор от сървъра:\n" + txt)).catch(() => alert("Свържете се с Python сървъра за достъп до реални файлове!"));
+    };
+    function openRecycleBin() { addWindow('Recycle Bin', '<p>Кошчето е празно. (Симулация)</p>', 300, 150); }
+    function openFileExplorer() {
+        let content = `<div><strong>Локален диск (C:)</strong><hr>
+        <div onclick="window.simFsNavigate('Program Files')">📁 Program Files</div>
+        <div onclick="window.simFsNavigate('Windows')">📁 Windows</div>
+        <div onclick="window.simFsNavigate('Documents')">📁 Documents</div>
+        <div onclick="window.simFsNavigate('readme.txt')">📄 readme.txt</div>
+        <hr><button onclick="window.openRealDrive()">🌐 Свържи се с реален C:\ (ако сървърът е активен)</button>
+        </div>`;
+        addWindow('Файлов изследовател', content, 450, 350);
+    }
+    window.simFsNavigate = (path) => {
+        let msg = { 'Program Files':'Internet Explorer, Windows Media Player', 'Windows':'System32, regedit.exe', 'Documents':'My Pictures, sample.txt', 'readme.txt':'Добре дошли в XP симулатора!' }[path] || 'Папката е празна.';
+        alert(msg);
+    };
+    window.openRealDrive = () => { fetch('/list_c_drive').then(r=>r.text()).then(alert).catch(()=>alert('Стартирай python server.py за интеграция')); };
+    function openNotepad() {
+        let saved = localStorage.getItem('xp_note') || '';
+        const html = `<textarea id="noteArea" style="width:100%; height:150px;">${saved.replace(/</g,'&lt;')}</textarea><br><button id="saveNoteBtn">Запази</button> <button id="clearNoteBtn">Изчисти</button>`;
+        const win = addWindow('Notepad', html, 450, 280);
+        setTimeout(() => {
+            document.getElementById('saveNoteBtn')?.addEventListener('click', () => { localStorage.setItem('xp_note', document.getElementById('noteArea').value); alert('Записано!'); });
+            document.getElementById('clearNoteBtn')?.addEventListener('click', () => { document.getElementById('noteArea').value = ''; localStorage.setItem('xp_note',''); });
+        }, 50);
+    }
+    function openCalculator() {
+        const calcHtml = `<input id="calcDisp" readonly style="width:100%"><div class="calc-grid" id="calcGrid">
+        ${'789/456*123-0.=+'.split('').map(b => `<button>${b}</button>`).join('')}<button>C</button><button>←</button></div>`;
+        const win = addWindow('Калкулатор', calcHtml, 270, 320);
+        setTimeout(() => {
+            let disp = document.getElementById('calcDisp');
+            let current = '';
+            document.querySelectorAll('#calcGrid button').forEach(btn => {
+                btn.onclick = () => {
+                    let val = btn.innerText;
+                    if(val === 'C') current = '';
+                    else if(val === '←') current = current.slice(0,-1);
+                    else if(val === '=') { try { current = eval(current).toString(); } catch(e) { current = 'Error'; } }
+                    else current += val;
+                    if(disp) disp.value = current;
+                };
+            });
+        },50);
+    }
+    function openPaint() {
+        const html = `<canvas id="paintCanvas" width="400" height="300" style="border:1px solid black; background:white;"></canvas><br><button id="clearPaint">Изчисти</button> <button id="savePaint">Запази</button>`;
+        const win = addWindow('Paint', html, 480, 420);
+        setTimeout(() => {
+            const canvas = document.getElementById('paintCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let drawing = false;
+            canvas.onmousedown = (e) => { drawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); };
+            canvas.onmousemove = (e) => { if(drawing) { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); } };
+            canvas.onmouseup = () => drawing = false;
+            document.getElementById('clearPaint')?.onclick = () => ctx.clearRect(0,0,canvas.width,canvas.height);
+            document.getElementById('savePaint')?.onclick = () => { const link = document.createElement('a'); link.download = 'xp_paint.png'; link.href = canvas.toDataURL(); link.click(); };
+        },50);
+    }
+    function openMinesweeper() {
+        const html = `<div id="msBoard" style="display:grid; gap:2px;"></div><p>Клик -> отваряне</p>`;
+        const win = addWindow('Minesweeper', html, 320, 360);
+        setTimeout(() => {
+            const boardDiv = document.getElementById('msBoard');
+            const size = 8;
+            boardDiv.style.gridTemplateColumns = `repeat(${size}, 30px)`;
+            for(let i=0;i<size*size;i++) {
+                const cell = document.createElement('div');
+                cell.className = 'mine-cell';
+                cell.innerText = '';
+                cell.onclick = () => { cell.innerText = '✔'; };
+                boardDiv.appendChild(cell);
+            }
+        },50);
+    }
+    function openIE() {
+        const ieHtml = `<iframe src="https://example.com" style="width:100%; height:250px;"></iframe><div><input id="ieUrl" placeholder="URL" style="width:70%"><button id="ieGo">Отиди</button></div>`;
+        const win = addWindow('Internet Explorer', ieHtml, 580, 420);
+        setTimeout(() => {
+            document.getElementById('ieGo')?.addEventListener('click', () => {
+                let url = document.getElementById('ieUrl').value;
+                if(!url.startsWith('http')) url = 'https://'+url;
+                win.querySelector('iframe').src = url;
+            });
+        },50);
+    }
+    function openCMD() {
+        const cmdHtml = `<pre style="background:black; color:#0f0; padding:8px;">Microsoft Windows XP [Version 5.1.2600]<br>C:\\&gt; <input id="cmdInput" style="background:black; color:#0f0; border:none; width:60%;"></pre><div id="cmdOutput"></div>`;
+        const win = addWindow('Command Prompt', cmdHtml, 550, 350);
+        setTimeout(() => {
+            const input = document.getElementById('cmdInput');
+            const output = document.getElementById('cmdOutput');
+            input?.addEventListener('keypress', (e) => {
+                if(e.key === 'Enter') {
+                    let cmd = input.value;
+                    let resp = '';
+                    if(cmd === 'dir') resp = 'Volume in drive C is XP_SIM<br>  Program Files   Windows   readme.txt';
+                    else if(cmd === 'ver') resp = 'Microsoft Windows XP [Version 5.1.2600]';
+                    else if(cmd === 'help') resp = 'Достъпни: dir, ver, help, cls, exit';
+                    else if(cmd === 'cls') resp = '';
+                    else if(cmd === 'exit') win.querySelector('.close-win').click();
+                    else resp = `'${cmd}' не е разпозната`;
+                    if(resp) output.innerHTML += `<br>C:\\>${cmd}<br>${resp}<br>`;
+                    input.value = '';
+                }
+            });
+        },50);
+    }
+
+    // Старт меню
+    let startMenuDiv = null;
+    function toggleStartMenu() {
+        if(startMenuDiv) { startMenuDiv.remove(); startMenuDiv = null; return; }
+        const menu = document.createElement('div');
+        menu.className = 'start-menu-xp';
+        menu.innerHTML = `<div class="start-header"><span>🧑‍💻 user</span></div>
+        <div class="start-items">
+            <div class="start-item" data-app="mycomp">🖥️ Моят компютър</div>
+            <div class="start-item" data-app="explorer">📁 Файлове</div>
+            <div class="start-item" data-app="notepad">📝 Notepad</div>
+            <div class="start-item" data-app="calc">🧮 Калкулатор</div>
+            <div class="start-item" data-app="paint">🎨 Paint</div>
+            <div class="start-item" data-app="minesweeper">💣 Minesweeper</div>
+            <div class="start-item" data-app="ie">🌐 Internet Explorer</div>
+            <div class="start-item" data-app="cmd">⌨️ Command Prompt</div>
+            <hr><div class="start-item" id="startShutdown">🔌 Изключване</div>
+        </div>`;
+        document.getElementById('xpDesktopArea')?.appendChild(menu);
+        startMenuDiv = menu;
+        document.querySelectorAll('.start-item').forEach(it => {
+            it.onclick = () => {
+                const app = it.getAttribute('data-app');
+                if(app === 'mycomp') openMyComputer();
+                else if(app === 'explorer') openFileExplorer();
+                else if(app === 'notepad') openNotepad();
+                else if(app === 'calc') openCalculator();
+                else if(app === 'paint') openPaint();
+                else if(app === 'minesweeper') openMinesweeper();
+                else if(app === 'ie') openIE();
+                else if(app === 'cmd') openCMD();
+                menu.remove(); startMenuDiv=null;
+            };
+        });
+        document.getElementById('startShutdown').onclick = () => { document.getElementById('xpSimulator').classList.remove('active'); xpActive=false; resetScreensaver(); menu.remove(); startMenuDiv=null; };
+        document.addEventListener('click', function rmMenu(e) { if(startMenuDiv && !startMenuDiv.contains(e.target) && e.target !== document.getElementById('xpStartBtn')) { startMenuDiv.remove(); startMenuDiv=null; document.removeEventListener('click', rmMenu); } });
+    }
+
+    // Инициализация
+    const simOverlay = document.getElementById('xpSimulator');
+    document.getElementById('xpCard').onclick = () => {
+        simOverlay.classList.add('active');
+        xpActive = true;
+        playXpStartSound();
+        resetScreensaver();
+        document.getElementById('windowsContainer').innerHTML = '';
+        openWindowsList = [];
+        updateTaskbarButtons();
+        initDesktopIcons();
+    };
+    document.getElementById('closeSimXp').onclick = () => {
+        simOverlay.classList.remove('active');
+        xpActive = false;
+        document.getElementById('globalScreensaver').style.display = 'none';
+        if(startMenuDiv) startMenuDiv.remove();
+        resetScreensaver();
+    };
+    document.getElementById('xpStartBtn').onclick = toggleStartMenu;
+    document.querySelectorAll('.win-card:not(#xpCard)').forEach(card => {
+        card.onclick = () => alert(`Тази версия е визуална илюстрация. Само Windows XP има пълен симулатор с икони и функции.`);
+    });
+    updateClocks();
+</script>
+</body>
+</html>
