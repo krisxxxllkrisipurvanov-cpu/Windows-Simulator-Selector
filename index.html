@@ -1,82 +1,710 @@
-import React, { useState } from "react";
-import XpDesktop from "@/components/xp/XpDesktop";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🌄 Sky Parkour</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'Poppins', monospace; }
+    #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+    #ui-container { position: absolute; top: 20px; left: 20px; background: rgba(10,20,40,0.5); backdrop-filter: blur(8px); color: white; padding: 14px 28px; border-radius: 50px; border-left: 6px solid #ffb347; box-shadow: 0 8px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 15px; pointer-events: none; }
+    #score { font-size: 2.8rem; font-weight: 800; color: #ffe066; text-shadow: 0 0 25px #ff9900; }
+    #progress { position: absolute; top: 20px; right: 80px; background: rgba(20,30,50,0.6); backdrop-filter: blur(5px); color: #b8dcff; padding: 12px 24px; border-radius: 40px; font-size: 1.2rem; font-weight: 600; border-right: 5px solid #5a9cff; box-shadow: 0 5px 15px rgba(0,0,0,0.3); pointer-events: none; }
+    #controls { position: absolute; bottom: 25px; left: 25px; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); color: #eee; padding: 12px 24px; border-radius: 40px; font-size: 1rem; border: 1px solid #6688aa; box-shadow: 0 5px 15px rgba(0,0,0,0.3); pointer-events: none; }
+    #controls kbd { background: #2c4058; border-radius: 8px; padding: 4px 12px; margin: 0 5px; color: #ffcc66; font-weight: bold; border-bottom: 3px solid #0f1a24; }
+    #message { position: absolute; bottom: 25px; right: 25px; background: rgba(30,40,60,0.5); backdrop-filter: blur(4px); color: #c0e0ff; padding: 10px 24px; border-radius: 30px; font-size: 1rem; border-left: 4px solid #88ccff; box-shadow: 0 5px 15px rgba(0,0,0,0.3); pointer-events: none; }
+    #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; background: rgba(255,255,255,0.9); border-radius: 50%; box-shadow: 0 0 15px #44aaff; border: 1px solid #000; pointer-events: none; }
+    #instruction { position: absolute; bottom: 100px; left: 25px; color: #d0e0ff; background: rgba(0,0,0,0.2); padding: 6px 18px; border-radius: 20px; font-size: 0.9rem; backdrop-filter: blur(3px); pointer-events: none; }
+    #click-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; background: rgba(20,30,50,0.7); padding: 12px 28px; border-radius: 40px; font-size: 1.3rem; pointer-events: none; border: 2px solid #aaccff; backdrop-filter: blur(5px); box-shadow: 0 0 30px rgba(100,150,255,0.3); }
+    #interaction-prompt {
+      position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.7); color: #ffd966; padding: 10px 25px; border-radius: 40px;
+      font-size: 1.4rem; font-weight: bold; backdrop-filter: blur(5px); border: 2px solid #ffb347;
+      pointer-events: none; z-index: 15; display: none;
+    }
+    #crash-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: #0a0a0a; color: #ff3333; display: none;
+      flex-direction: column; justify-content: center; align-items: center;
+      z-index: 100; font-family: 'Courier New', monospace; text-shadow: 0 0 10px red;
+      pointer-events: none;
+    }
+    #crash-overlay h1 { font-size: 4rem; margin-bottom: 20px; animation: glitchText 0.2s infinite; }
+    #crash-overlay p { font-size: 1.5rem; opacity: 0.8; }
+    @keyframes glitchText {
+      0% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); }
+      40% { transform: translate(2px, -2px); }
+      60% { transform: translate(-2px, -2px); }
+      80% { transform: translate(2px, 2px); }
+      100% { transform: translate(0); }
+    }
+    #main-menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 30% 40%, #1a3a5c, #0a1a2a); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; pointer-events: auto; color: white; font-family: 'Poppins', sans-serif; }
+    #game-title { font-size: 6rem; font-weight: 900; text-shadow: 4px 4px 0 #0a1a2a, 10px 10px 30px #000; margin-bottom: 20px; background: linear-gradient(145deg, #ffe68f, #ffb347); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: 6px; }
+    #menu-subtitle { font-size: 1.5rem; color: #c0e0ff; margin-bottom: 50px; text-shadow: 2px 2px 10px #000; }
+    #start-btn { background: linear-gradient(145deg, #5aac7a, #3e8d5a); border: none; color: white; font-size: 2.2rem; font-weight: bold; padding: 20px 70px; border-radius: 80px; cursor: pointer; box-shadow: 0 12px 0 #1a4a2a, 0 10px 30px #000; transition: all 0.1s ease; border: 2px solid #a0d0a0; letter-spacing: 3px; }
+    #start-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 0 #1a4a2a, 0 12px 35px #000; background: linear-gradient(145deg, #6abc8a, #4ea06a); }
+    #start-btn:active { transform: translateY(6px); box-shadow: 0 6px 0 #1a4a2a, 0 8px 20px #000; }
+    .menu-hint { margin-top: 45px; color: #b0cce0; font-size: 1.2rem; }
+    .menu-hint kbd { background: #2c4058; padding: 6px 14px; border-radius: 10px; margin: 0 6px; color: #ffd966; font-weight: bold; }
+    .game-ui-hidden { display: none !important; }
 
-const osCards = [
-  { id: "95", icon: "🖥️", title: "Windows 95", year: "1995", desc: "Start Menu • Plug & Play" },
-  { id: "98", icon: "💾", title: "Windows 98", year: "1998", desc: "USB • Active Desktop" },
-  { id: "me", icon: "🧪", title: "Windows ME", year: "2000", desc: "System Restore" },
-  { id: "xp", icon: "🌟", title: "Windows XP", year: "2001 • LEGEND", desc: null, badge: true },
-  { id: "7", icon: "🎨", title: "Windows 7", year: "2009", desc: "Aero Glass" },
-  { id: "10", icon: "🔷", title: "Windows 10", year: "2015", desc: "Modern UI" },
-];
+    #x-button {
+      position: absolute; top: 20px; right: 20px; width: 48px; height: 48px;
+      background: rgba(30,40,60,0.7); backdrop-filter: blur(5px); color: #ffaa88;
+      border: 2px solid #aaccff; border-radius: 50%; font-size: 28px; font-weight: bold;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      pointer-events: auto; z-index: 25; box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+      transition: 0.2s; text-decoration: none;
+    }
+    #x-button:hover { background: rgba(60,80,100,0.9); color: #ffccbb; border-color: #ffaa88; transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <div id="main-menu">
+    <div id="game-title">SKY PARKOUR</div>
+    <div id="menu-subtitle">🌄 Explore the floating islands</div>
+    <button id="start-btn">BEGIN</button>
+    <div class="menu-hint"><kbd>WASD</kbd> move · <kbd>MOUSE</kbd> look · <kbd>SPACE</kbd> jump · <kbd>E</kbd> enter</div>
+  </div>
+  <a id="x-button" href="https://krisxxxllkrisipurvanov-cpu.github.io/Windows-Server-2026/" target="_self" title="Visit Windows Server 2026">✕</a>
+  <div id="game-ui" class="game-ui-hidden">
+    <div id="ui-container"><span>⭐ CUBES</span><span id="score">0</span></div>
+    <div id="progress">🏁 <span id="progress-text">Stage 1/6</span></div>
+    <div id="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>MOUSE</kbd> look · <kbd>SPACE</kbd> jump · <kbd>E</kbd> enter</div>
+    <div id="message">🌅 Find the house · Press E at door</div>
+    <div id="instruction">⬆️ R to reset · Click to lock mouse</div>
+    <div id="crosshair"></div>
+    <div id="click-hint">🎯 Click to enable mouse look</div>
+    <div id="interaction-prompt">🚪 Press E to enter</div>
+  </div>
+  <div id="crash-overlay">
+    <h1>💀 CRITICAL ERROR 💀</h1>
+    <p>SYSTEM FAILURE · MEMORY CORRUPTED</p>
+    <p style="font-size:1rem; margin-top:30px;">Press F5 to reload</p>
+  </div>
 
-const Index = () => {
-  const [showXp, setShowXp] = useState(false);
+  <script type="importmap">
+    {"imports": {"three": "https://unpkg.com/three@0.128.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"}}
+  </script>
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-[1300px] mx-auto px-5 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1
-            className="text-4xl md:text-5xl font-display font-bold text-primary"
-            style={{ animation: "glowPulse 1.5s infinite alternate" }}
-          >
-            🪟 WINDOWS MUSEUM
-          </h1>
-          <div className="inline-block mt-4 px-6 py-2 rounded-full border border-primary text-foreground text-lg"
-            style={{ background: "hsl(var(--card))", backdropFilter: "blur(6px)" }}
-          >
-            📀 6 версии Windows
-          </div>
-        </div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-        {/* OS Cards Grid */}
-        <div
-          className="flex flex-wrap justify-center gap-7 my-10"
-          style={{ animation: "fadeInUp 0.5s ease" }}
-        >
-          {osCards.map(os => (
-            <div
-              key={os.id}
-              onClick={() => {
-                if (os.id === "xp") setShowXp(true);
-                else alert("Тази версия е визуална илюстрация. Само Windows XP има пълен симулатор!");
-              }}
-              className="rounded-3xl p-5 text-center w-[150px] cursor-pointer transition-all duration-200 border border-primary/40 hover:scale-105 hover:border-primary hover:shadow-[0_0_18px_hsl(var(--primary))]"
-              style={{
-                background: "rgba(0,0,0,0.6)",
-                backdropFilter: "blur(8px)",
-                boxShadow: "0 8px 20px rgba(0,0,0,0.4)",
-                color: "white",
-              }}
-            >
-              <div className="text-6xl mb-3">{os.icon}</div>
-              <div className="text-xl font-bold">{os.title}</div>
-              <div className="text-xs opacity-80">{os.year}</div>
-              {os.desc && <div className="text-[0.65rem] mt-2">{os.desc}</div>}
-              {os.badge && (
-                <div className="mt-2 inline-block px-3 py-1 rounded-full text-[0.65rem] font-bold"
-                  style={{ background: "#2a7f2a" }}>
-                  ⭐ ПЪЛЕН СИМУЛАТОР ⭐
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+    // Shaders
+    const GlitchShader = {
+      uniforms: { tDiffuse: { value: null }, time: { value: 0 }, intensity: { value: 0.0 } },
+      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `
+        uniform sampler2D tDiffuse; uniform float time; uniform float intensity;
+        varying vec2 vUv;
+        float rand(vec2 n) { return fract(sin(dot(n, vec2(12.9898, 78.233))) * 43758.5453); }
+        void main() {
+          vec2 uv = vUv;
+          float glitchStrength = intensity * 0.8;
+          float rOffset = (rand(vec2(time, uv.y)) - 0.5) * glitchStrength * 0.15;
+          float gOffset = (rand(vec2(time*2.0, uv.y)) - 0.5) * glitchStrength * 0.15;
+          float bOffset = (rand(vec2(time*3.0, uv.y)) - 0.5) * glitchStrength * 0.15;
+          vec4 colorR = texture2D(tDiffuse, uv + vec2(rOffset, 0.0));
+          vec4 colorG = texture2D(tDiffuse, uv + vec2(gOffset, 0.0));
+          vec4 colorB = texture2D(tDiffuse, uv + vec2(bOffset, 0.0));
+          vec4 glitchColor = vec4(colorR.r, colorG.g, colorB.b, 1.0);
+          float blockSize = 0.01 + glitchStrength * 0.3;
+          vec2 blockCoord = floor(uv / blockSize) * blockSize;
+          float noiseVal = rand(blockCoord + floor(time * 15.0));
+          vec4 noiseColor = vec4(noiseVal, noiseVal*0.3, noiseVal*0.6, 1.0);
+          vec4 original = texture2D(tDiffuse, uv);
+          glitchColor = mix(original, glitchColor, intensity);
+          glitchColor = mix(glitchColor, noiseColor, intensity * 0.5 * noiseVal);
+          float scanline = sin(uv.y * 1000.0 + time * 20.0) * 0.15 * intensity;
+          glitchColor.rgb += scanline;
+          gl_FragColor = glitchColor;
+        }
+      `
+    };
+    const PixelateShader = {
+      uniforms: { tDiffuse: { value: null }, pixelSize: { value: 6.0 } },
+      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `
+        uniform sampler2D tDiffuse; uniform float pixelSize;
+        varying vec2 vUv;
+        void main() {
+          vec2 d = vec2(pixelSize) / vec2(1920.0, 1080.0);
+          vec2 coord = floor(vUv / d) * d;
+          gl_FragColor = texture2D(tDiffuse, coord);
+        }
+      `
+    };
 
-        {/* Info */}
-        <div className="text-center mx-auto w-fit px-8 py-4 rounded-full text-muted-foreground text-sm"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
-          ✨ <strong className="text-foreground">Кликни върху Windows XP</strong> за пълноценен симулатор:<br/>
-          Калкулатор • Notepad • Paint • Minesweeper • Internet Explorer • CMD • File Explorer • Media Player • Control Panel
-        </div>
-      </div>
+    // Scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffaa66);
+    scene.fog = new THREE.FogExp2(0xd4b896, 0.0045);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.bias = 0.00005;
+    renderer.setPixelRatio(1);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    document.body.appendChild(renderer.domElement);
 
-      {/* XP Simulator */}
-      {showXp && <XpDesktop onClose={() => setShowXp(false)} />}
-    </div>
-  );
-};
+    const cssRenderer = new CSS2DRenderer();
+    cssRenderer.setSize(window.innerWidth, window.innerHeight);
+    cssRenderer.domElement.style.position = 'absolute';
+    cssRenderer.domElement.style.top = '0'; cssRenderer.domElement.style.left = '0';
+    cssRenderer.domElement.style.pointerEvents = 'none';
+    document.body.appendChild(cssRenderer.domElement);
 
-export default Index;
+    const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 300);
+    camera.position.set(0, 1.6, 0);
+    let yaw = 0, pitch = 0;
+    const sensitivity = 0.002, maxPitch = Math.PI/2.2;
+    
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const glitchPass = new ShaderPass(GlitchShader);
+    composer.addPass(glitchPass);
+    const pixelatePass = new ShaderPass(PixelateShader);
+    pixelatePass.uniforms.pixelSize.value = 6.0;
+    pixelatePass.renderToScreen = true;
+    composer.addPass(pixelatePass);
+
+    renderer.domElement.addEventListener('click', () => { if (gameStarted && !crashed) renderer.domElement.requestPointerLock(); });
+    document.addEventListener('pointerlockchange', () => {
+      document.getElementById('click-hint').style.display = (document.pointerLockElement === renderer.domElement && gameStarted && !crashed) ? 'none' : 'block';
+    });
+    document.addEventListener('mousemove', e => {
+      if (document.pointerLockElement === renderer.domElement && gameStarted && !crashed) {
+        yaw -= e.movementX * sensitivity;
+        pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch - e.movementY * sensitivity));
+      }
+    });
+
+    // Lighting
+    scene.add(new THREE.AmbientLight(0x7c8a9a, 0.4));
+    const sun = new THREE.DirectionalLight(0xffe6cc, 1.5);
+    sun.position.set(30, 25, 20);
+    sun.castShadow = true; sun.receiveShadow = true;
+    sun.shadow.mapSize.width = 4096; sun.shadow.mapSize.height = 4096;
+    const d = 45;
+    sun.shadow.camera.left = -d; sun.shadow.camera.right = d;
+    sun.shadow.camera.top = d; sun.shadow.camera.bottom = -d;
+    sun.shadow.camera.near = 1; sun.shadow.camera.far = 90;
+    sun.shadow.bias = -0.0003;
+    sun.shadow.radius = 3;
+    scene.add(sun);
+    scene.add(new THREE.PointLight(0xffaa88, 0.6, 60, -15, 12, -20));
+    scene.add(new THREE.PointLight(0xaaccff, 0.5, 50, 10, 8, 25));
+
+    // Water
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x3a7ca5, transparent: true, opacity: 0.75, roughness: 0.2, metalness: 0.1 });
+    const water = new THREE.Mesh(new THREE.CylinderGeometry(130, 130, 0.5, 64), waterMat);
+    water.position.y = -3.5; water.receiveShadow = true; scene.add(water);
+    
+    // Clouds
+    function createCloud(x, y, z, scale, variant=0) {
+      const g = new THREE.Group();
+      const col = new THREE.Color(0xfff5e6).lerp(new THREE.Color(0xd4c4b0), variant*0.4);
+      const m = new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.6, roughness: 0.9 });
+      const p1 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 9), m); g.add(p1);
+      const p2 = new THREE.Mesh(new THREE.SphereGeometry(1.1, 9), m); p2.position.set(1.6, 0.3, 0.5); g.add(p2);
+      const p3 = new THREE.Mesh(new THREE.SphereGeometry(1.1, 9), m); p3.position.set(-1.4, 0.2, -0.4); g.add(p3);
+      const p4 = new THREE.Mesh(new THREE.SphereGeometry(1.0, 9), m); p4.position.set(0.4, 0.7, 1.4); g.add(p4);
+      const p5 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 9), m); p5.position.set(-0.5, 0.6, -1.3); g.add(p5);
+      g.position.set(x, y, z); g.scale.set(scale, scale*0.5, scale); return g;
+    }
+    scene.add(createCloud(-30,12,-40,5.0,0.3)); scene.add(createCloud(25,14,-50,6.0,0.6)); scene.add(createCloud(45,10,20,5.5,0.1));
+    scene.add(createCloud(-35,13,30,5.2,0.4)); scene.add(createCloud(60,16,-30,7.0,0.5));
+
+    const particles = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(1200*3).map(()=>(Math.random()-0.5)*140), 3)), new THREE.PointsMaterial({color:0xeeddcc, size:0.15, transparent:true, opacity:0.5}));
+    scene.add(particles);
+
+    // Platforms
+    const platforms = [];
+    function createRockyIsland(w, d, topY, x, z, baseColor) {
+      const group = new THREE.Group();
+      const h = 0.8;
+      const mat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.6 });
+      const main = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      main.position.y = topY - h/2; main.receiveShadow = main.castShadow = true; group.add(main);
+      const rockMat = new THREE.MeshStandardMaterial({ color: 0x8a7a6a, roughness: 0.8 });
+      for (let i=0; i<10; i++) {
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2+Math.random()*0.25), rockMat);
+        const angle = (i/10)*Math.PI*2;
+        rock.position.set(Math.cos(angle)*(w/2+0.15), topY-0.2, Math.sin(angle)*(d/2+0.15));
+        rock.receiveShadow = rock.castShadow = true; group.add(rock);
+      }
+      for (let k=0; k<8; k++) {
+        const pebble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08+Math.random()*0.1), rockMat);
+        pebble.position.x = (Math.random()-0.5)*(w-1.2);
+        pebble.position.z = (Math.random()-0.5)*(d-1.2);
+        pebble.position.y = topY-0.05;
+        pebble.receiveShadow = pebble.castShadow = true;
+        group.add(pebble);
+      }
+      const grassMat = new THREE.MeshStandardMaterial({ color: 0x5a8c4a, roughness: 0.7 });
+      for (let j=0; j<6; j++) {
+        const patch = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.5,0.05,5), grassMat);
+        patch.position.x = (Math.random()-0.5)*(w-1.5); patch.position.z = (Math.random()-0.5)*(d-1.5); patch.position.y = topY-0.02;
+        patch.receiveShadow = patch.castShadow = true; group.add(patch);
+      }
+      group.position.set(x,0,z); scene.add(group);
+      platforms.push({ mesh: group, w, d, minY: topY-h, maxY: topY, pos: new THREE.Vector3(x, topY, z) });
+      return { x, z, topY };
+    }
+    const platData = [
+      createRockyIsland(6,6,0,0,0,0x7c8c7c), createRockyIsland(3.5,3.5,0,6.5,0,0x9a8a6c), createRockyIsland(3,3,0.3,11,2.5,0x8a9a7a),
+      createRockyIsland(3.2,3.2,0.6,15,-1.5,0x9a8c6c), createRockyIsland(7,2.2,1,20,3,0xb09a6c), createRockyIsland(4,4,1.5,25,6,0x7cacb0),
+      createRockyIsland(4.5,4.5,2.1,30,3.5,0xac9c7c), createRockyIsland(3,3,2.8,35,7,0x8ab0a0), createRockyIsland(5,5,3.4,40,2.5,0x9a8cac),
+      createRockyIsland(3.5,3.5,4,45,-2,0x7c9aac), createRockyIsland(5.5,5.5,4.6,50,4.5,0xb89a7c), createRockyIsland(4,4,5.2,55,-3,0x8ab0a8),
+      createRockyIsland(6,6,6,61,2,0xd4b87a), createRockyIsland(4,4,6.6,67,5,0xbc9a6c), createRockyIsland(3.5,3.5,7.2,72,1,0x7cac8c),
+      createRockyIsland(5,5,7.8,77,6,0x9a9cac), createRockyIsland(4.5,4.5,8.4,82,3,0xac8c6c), createRockyIsland(6,2.5,9,88,-1.5,0x8aac8a),
+      createRockyIsland(5,5,9.6,93,4,0x7cacb8), createRockyIsland(4,4,10.2,98,6.5,0xb89a7c), createRockyIsland(6,6,10.8,104,2,0xd4b87a),
+      createRockyIsland(4.5,4.5,11.4,110,5.5,0xac9c8c), createRockyIsland(5.5,5.5,12,117,2.5,0xffd68a)
+    ];
+
+    // House exterior
+    const housePos = platData[22];
+    const houseGroup = new THREE.Group();
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xd4a76a, roughness: 0.6 });
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(4.0, 2.5, 3.5), wallMat);
+    walls.position.y = 1.25; walls.castShadow = walls.receiveShadow = true;
+    houseGroup.add(walls);
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.8 });
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.5, 4), roofMat);
+    roof.position.y = 3.0; roof.rotation.y = Math.PI/4;
+    roof.castShadow = roof.receiveShadow = true;
+    houseGroup.add(roof);
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x5d3a1a });
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.1), doorMat);
+    door.position.set(0, 0.8, 1.76); door.castShadow = true;
+    houseGroup.add(door);
+    const winMat = new THREE.MeshStandardMaterial({ color: 0xadd8e6, emissive: new THREE.Color(0x224466), emissiveIntensity: 0.5 });
+    const win1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), winMat);
+    win1.position.set(-1.2, 1.2, 1.76); win1.castShadow = true;
+    houseGroup.add(win1);
+    const win2 = win1.clone(); win2.position.set(1.2, 1.2, 1.76);
+    houseGroup.add(win2);
+    const chimMat = new THREE.MeshStandardMaterial({ color: 0xaa5533 });
+    const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.7, 2.0, 0.7), chimMat);
+    chimney.position.set(1.2, 2.8, -1.0); chimney.castShadow = chimney.receiveShadow = true;
+    houseGroup.add(chimney);
+    houseGroup.position.set(housePos.x, housePos.topY, housePos.z);
+    houseGroup.rotation.y = Math.PI;
+    scene.add(houseGroup);
+    
+    const houseLight = new THREE.PointLight(0xffaa66, 0.8, 8);
+    houseLight.position.set(housePos.x, housePos.topY+1.5, housePos.z+1.5);
+    scene.add(houseLight);
+
+    // Interior
+    const interiorGroup = new THREE.Group();
+    interiorGroup.position.set(0, -50, 0);
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0x8b6e4c }));
+    floor.position.y = 0.1; floor.receiveShadow = true; floor.castShadow = true;
+    interiorGroup.add(floor);
+    const intWallMat = new THREE.MeshStandardMaterial({ color: 0xc4a67a, roughness: 0.6 });
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.3), intWallMat);
+    backWall.position.set(0, 1.5, -3); backWall.receiveShadow = true; backWall.castShadow = true;
+    interiorGroup.add(backWall);
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 6), intWallMat);
+    leftWall.position.set(-3, 1.5, 0); leftWall.receiveShadow = true; leftWall.castShadow = true;
+    interiorGroup.add(leftWall);
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 6), intWallMat);
+    rightWall.position.set(3, 1.5, 0); rightWall.receiveShadow = true; rightWall.castShadow = true;
+    interiorGroup.add(rightWall);
+    const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.3), intWallMat);
+    frontLeft.position.set(-2, 1.5, 3); frontLeft.receiveShadow = true; frontLeft.castShadow = true;
+    interiorGroup.add(frontLeft);
+    const frontRight = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.3), intWallMat);
+    frontRight.position.set(2, 1.5, 3); frontRight.receiveShadow = true; frontRight.castShadow = true;
+    interiorGroup.add(frontRight);
+    const frontTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 0.3), intWallMat);
+    frontTop.position.set(0, 2.75, 3); frontTop.receiveShadow = true; frontTop.castShadow = true;
+    interiorGroup.add(frontTop);
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0xa08060 }));
+    ceiling.position.y = 3; ceiling.receiveShadow = true; ceiling.castShadow = true;
+    interiorGroup.add(ceiling);
+
+    const breakables = [];
+    function addBreakable(mesh) {
+      interiorGroup.add(mesh);
+      breakables.push({ mesh, origPos: mesh.position.clone(), origRot: mesh.rotation.clone(), vel: new THREE.Vector3(), rotVel: new THREE.Vector3() });
+    }
+    const table = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0x5d3a1a }));
+    table.position.set(0, 0.4, 0); table.castShadow = true; table.receiveShadow = true;
+    addBreakable(table);
+    const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.6), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
+    chair.position.set(0.8, 0.45, -0.8); chair.castShadow = true; chair.receiveShadow = true;
+    addBreakable(chair);
+    const bookshelf = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.0, 0.5), new THREE.MeshStandardMaterial({ color: 0x6b4e3a }));
+    bookshelf.position.set(-1.8, 1.0, -2.2); bookshelf.castShadow = true; bookshelf.receiveShadow = true;
+    addBreakable(bookshelf);
+    const fireplace = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.5), new THREE.MeshStandardMaterial({ color: 0xaa5533 }));
+    fireplace.position.set(1.8, 0.75, -2.0); fireplace.castShadow = true; fireplace.receiveShadow = true;
+    addBreakable(fireplace);
+    const fireLight = new THREE.PointLight(0xff6600, 1.2, 5);
+    fireLight.position.set(1.8, 1.0, -1.5);
+    interiorGroup.add(fireLight);
+    const intDoor = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.0, 0.1), new THREE.MeshStandardMaterial({ color: 0x5d3a1a }));
+    intDoor.position.set(0, 1.0, 2.5); intDoor.castShadow = true;
+    interiorGroup.add(intDoor);
+    
+    interiorGroup.visible = false;
+    scene.add(interiorGroup);
+
+    // Trees, bushes, butterflies
+    function addTree(plat, ox, oz, s=1) {
+      const x=plat.x+ox, z=plat.z+oz, y=plat.topY;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4*s,0.5*s,2.2*s,6), new THREE.MeshStandardMaterial({color:0x7a5a3a,roughness:0.9}));
+      trunk.position.set(x,y+1.1*s,z); trunk.receiveShadow=trunk.castShadow=true; scene.add(trunk);
+      const leafMat = new THREE.MeshStandardMaterial({color:0x4a8c4a,roughness:0.5});
+      const l1=new THREE.Mesh(new THREE.ConeGeometry(1.3*s,1.5*s,7),leafMat); l1.position.set(x,y+2.3*s,z); l1.receiveShadow=l1.castShadow=true; scene.add(l1);
+      const l2=new THREE.Mesh(new THREE.ConeGeometry(1.0*s,1.2*s,7),leafMat); l2.position.set(x,y+3.2*s,z); l2.receiveShadow=l2.castShadow=true; scene.add(l2);
+      const l3=new THREE.Mesh(new THREE.ConeGeometry(0.7*s,0.9*s,7),leafMat); l3.position.set(x,y+3.9*s,z); l3.receiveShadow=l3.castShadow=true; scene.add(l3);
+    }
+    addTree(platData[0],-1.8,1.8,0.95); addTree(platData[5],1,-0.8); addTree(platData[8],-1.5,1.2,1.1); addTree(platData[12],1.8,-1.2);
+    addTree(platData[16],-1.2,-1.5); addTree(platData[19],1.5,1.5,1.2);
+    function addBush(plat, ox, oz, col) {
+      const x=plat.x+ox, z=plat.z+oz, y=plat.topY;
+      const mat = new THREE.MeshStandardMaterial({color:col, roughness:0.7});
+      for (let i=0; i<3; i++) {
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.3), mat);
+        b.position.set(x+(i-1)*0.3, y+0.2, z+0.2); b.receiveShadow=b.castShadow=true; scene.add(b);
+      }
+    }
+    addBush(platData[2],0.5,0.5,0x9a7caa); addBush(platData[3],-0.8,0.4,0xaa9c7a); addBush(platData[7],0.5,-0.7,0x7aac9a);
+    addBush(platData[11],-1,0.8,0xccaa88); addBush(platData[15],0.7,-0.5,0xaaccaa);
+    const butterflyTex = (() => {
+      const c = document.createElement('canvas'); c.width=32; c.height=32;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffccaa'; ctx.beginPath(); ctx.ellipse(8,16,6,10,0.2,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#aaccff'; ctx.beginPath(); ctx.ellipse(24,16,6,10,-0.2,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#886644'; ctx.beginPath(); ctx.ellipse(16,16,3,8,0,0,Math.PI*2); ctx.fill();
+      return new THREE.CanvasTexture(c);
+    })();
+    const butterflyMat = new THREE.SpriteMaterial({map: butterflyTex, transparent: true, opacity:0.8});
+    const butterflies = [];
+    for (let i=0; i<15; i++) {
+      const s = new THREE.Sprite(butterflyMat);
+      s.scale.set(0.5,0.5,1);
+      s.position.set((Math.random()-0.5)*100, 5+Math.random()*15, (Math.random()-0.5)*100);
+      scene.add(s);
+      butterflies.push({sprite:s, speed:0.005+Math.random()*0.01, angle:Math.random()*Math.PI*2, height:5+Math.random()*10});
+    }
+
+    // Collectibles
+    const collectibles = [];
+    const cubePos = [[3.5,0.8,2],[8,1,2.5],[12,1.4,-2],[17.5,1.9,4.5],[23,2.5,6.5],[29,3.1,5],[33,3.7,8],[38,4.3,4],[43,4.9,1],[48,5.5,5.5],[53,6.1,-1],[58,6.7,3.5],[64,7.3,6],[69,7.9,2.5],[74,8.5,7],[79,9.1,4.5],[84,9.7,1],[90,10.3,5],[95,10.9,7.5],[100,11.5,3],[106,12.1,6.5],[112,12.7,2.5],[118,13.3,5]];
+    cubePos.forEach(p => {
+      const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.75), new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: new THREE.Color(0xff6600), emissiveIntensity: 0.9 }));
+      m.position.set(p[0], p[1]+0.8, p[2]); m.castShadow=m.receiveShadow=true; scene.add(m);
+      const light = new THREE.PointLight(0xff9933,1,5); light.position.copy(m.position); scene.add(light);
+      collectibles.push({ mesh:m, light, phase:Math.random()*10 });
+    });
+
+    // Player
+    const player = new THREE.Group();
+    player.add(new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.6,1.6,8), new THREE.MeshStandardMaterial({color:0x6a8cae,roughness:0.4})));
+    player.children[0].position.y=0.8; player.children[0].castShadow=player.children[0].receiveShadow=true;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.45), new THREE.MeshStandardMaterial({color:0x8aaccc}));
+    head.position.y=1.6; head.castShadow=head.receiveShadow=true; player.add(head);
+    player.position.set(0,0.8,0); player.castShadow=player.receiveShadow=true; scene.add(player);
+    camera.position.copy(player.position).add(new THREE.Vector3(0,1.3,0));
+    
+    const vel = new THREE.Vector3();
+    const gravity = -0.016, jump = 0.34, speed = 0.16;
+    const keys = { w:0,a:0,s:0,d:0,space:0, e: false };
+    let insideHouse = false;
+    let scareActive = false;
+    let scareTimer = 0;
+    let crashed = false;
+    const promptEl = document.getElementById('interaction-prompt');
+    const crashOverlay = document.getElementById('crash-overlay');
+    
+    window.addEventListener('keydown', e => {
+      if (!gameStarted || crashed) return;
+      const k = e.code;
+      if (k === 'KeyW') keys.w = 1;
+      if (k === 'KeyA') keys.a = 1;
+      if (k === 'KeyS') keys.s = 1;
+      if (k === 'KeyD') keys.d = 1;
+      if (k === 'Space') keys.space = 1;
+      if (k === 'KeyE') keys.e = true;
+      e.preventDefault();
+    });
+    window.addEventListener('keyup', e => {
+      if (!gameStarted || crashed) return;
+      const k = e.code;
+      if (k === 'KeyW') keys.w = 0;
+      if (k === 'KeyA') keys.a = 0;
+      if (k === 'KeyS') keys.s = 0;
+      if (k === 'KeyD') keys.d = 0;
+      if (k === 'Space') keys.space = 0;
+      if (k === 'KeyE') keys.e = false;
+      e.preventDefault();
+    });
+    
+    function collide(pos, v) {
+      let gnd = false;
+      const sph = new THREE.Vector3(pos.x, pos.y+0.7, pos.z);
+      for (const p of platforms) {
+        const w=p.w/2, d=p.d/2;
+        const minX=p.pos.x-w, maxX=p.pos.x+w, minZ=p.pos.z-d, maxZ=p.pos.z+d, minY=p.minY, maxY=p.maxY;
+        const closest = new THREE.Vector3(Math.max(minX,Math.min(sph.x,maxX)), Math.max(minY,Math.min(sph.y,maxY)), Math.max(minZ,Math.min(sph.z,maxZ)));
+        const diff = new THREE.Vector3().subVectors(sph, closest);
+        const dist = diff.length();
+        if (dist < 0.6) {
+          const overlap = 0.6 - dist;
+          const norm = dist>0.001 ? diff.clone().divideScalar(dist) : new THREE.Vector3(0,1,0);
+          pos.x += norm.x*overlap; pos.y += norm.y*overlap; pos.z += norm.z*overlap;
+          sph.copy(pos).add(new THREE.Vector3(0,0.7,0));
+          if (norm.y > 0.7) { gnd = true; if (v.y<0) v.y=0; }
+        }
+        if (pos.y >= maxY-0.15 && pos.y <= maxY+0.2 && pos.x >= minX-0.6 && pos.x <= maxX+0.6 && pos.z >= minZ-0.6 && pos.z <= maxZ+0.6) { gnd = true; if (v.y<0) v.y=0; }
+      }
+      return gnd;
+    }
+
+    let score = 0, gameStarted = false, glitchIntensity = 0;
+    const scoreEl = document.getElementById('score'), progEl = document.getElementById('progress-text');
+    function updProg() {
+      const max = collectibles.length;
+      if (score>=max) progEl.textContent='🏆 COMPLETE!';
+      else if (score>=20) progEl.textContent='Stage 6/6';
+      else if (score>=16) progEl.textContent='Stage 5/6';
+      else if (score>=12) progEl.textContent='Stage 4/6';
+      else if (score>=8) progEl.textContent='Stage 3/6';
+      else if (score>=4) progEl.textContent='Stage 2/6';
+      else progEl.textContent='Stage 1/6';
+    }
+    function floatText(txt, pos) {
+      if (crashed) return;
+      const d = document.createElement('div'); d.textContent=txt; d.style.color='#FFE68F'; d.style.fontSize='34px'; d.style.fontWeight='bold'; d.style.textShadow='3px 3px 12px #000';
+      const lbl = new CSS2DObject(d); lbl.position.copy(pos.clone().add(new THREE.Vector3(0,2.2,0))); scene.add(lbl);
+      let st = performance.now(); 
+      function anim() { const et = performance.now()-st; if(et<800) { lbl.position.y+=0.04; d.style.opacity=1-et/800; requestAnimationFrame(anim); } else scene.remove(lbl); }
+      requestAnimationFrame(anim);
+    }
+
+    let audioCtx = null;
+    function initAudio() { if(audioCtx)return; audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
+    function playSound(type) {
+      if(!audioCtx||audioCtx.state!=='running'||crashed)return;
+      const now=audioCtx.currentTime, osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+      if(type==='step'){ osc.type='triangle'; osc.frequency.value=100; gain.gain.setValueAtTime(0.04,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.07); }
+      else if(type==='jump'){ osc.type='sine'; osc.frequency.value=200; osc.frequency.exponentialRampToValueAtTime(400,now+0.15); gain.gain.setValueAtTime(0.08,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.2); }
+      else if(type==='collect'){ osc.type='sine'; osc.frequency.value=800; osc.frequency.exponentialRampToValueAtTime(1200,now+0.1); gain.gain.setValueAtTime(0.1,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.15); }
+      osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(now+0.2);
+    }
+    function playScarySound() {
+      if(!audioCtx||audioCtx.state!=='running'||crashed)return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 80;
+      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.001, now+2.0);
+      const filter = audioCtx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 400;
+      osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(now+2.0);
+      for (let i=0; i<5; i++) {
+        const n = audioCtx.createOscillator(); n.type = 'square'; n.frequency.value = 200 + i*100;
+        const g = audioCtx.createGain(); g.gain.setValueAtTime(0.1, now+0.1*i); g.gain.exponentialRampToValueAtTime(0.001, now+0.5);
+        n.connect(g); g.connect(audioCtx.destination);
+        n.start(now+0.1*i); n.stop(now+0.6);
+      }
+    }
+
+    function triggerCrash() {
+      crashed = true;
+      crashOverlay.style.display = 'flex';
+      renderer.domElement.style.pointerEvents = 'none';
+      if (audioCtx) audioCtx.suspend();
+    }
+
+    function triggerHouseScare() {
+      scareActive = true;
+      scareTimer = 3.0;
+      glitchIntensity = 2.5;
+      playScarySound();
+      fireLight.intensity = 3.0;
+      breakables.forEach(b => {
+        b.vel.set((Math.random()-0.5)*0.3, Math.random()*0.2, (Math.random()-0.5)*0.3);
+        b.rotVel.set(Math.random()*0.1, Math.random()*0.1, Math.random()*0.1);
+      });
+    }
+
+    let footstepTimer = 0;
+    document.getElementById('start-btn').addEventListener('click', async () => {
+      gameStarted = true;
+      document.getElementById('main-menu').style.display = 'none';
+      document.getElementById('game-ui').classList.remove('game-ui-hidden');
+      renderer.domElement.requestPointerLock();
+      player.position.set(0,0.8,0); vel.set(0,0,0);
+      score=0; scoreEl.textContent='0';
+      collectibles.forEach((c,i)=> { c.mesh.position.set(cubePos[i][0], cubePos[i][1]+0.8, cubePos[i][2]); c.light.position.copy(c.mesh.position); });
+      updProg();
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+    });
+
+    let lt = performance.now();
+    function animate() {
+      if (!crashed) {
+        const t = performance.now(), dt = Math.min(16, t-lt)/1000; lt = t;
+        requestAnimationFrame(animate);
+        if (gameStarted) {
+          if (document.pointerLockElement === renderer.domElement) camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+          
+          const doorWorldPos = new THREE.Vector3(housePos.x, housePos.topY+1.0, housePos.z+1.8);
+          const distToDoor = player.position.distanceTo(doorWorldPos);
+          const canInteract = !insideHouse && distToDoor < 3.5;
+          promptEl.style.display = canInteract ? 'block' : 'none';
+          if (canInteract && keys.e) {
+            keys.e = false;
+            insideHouse = true;
+            interiorGroup.visible = true;
+            scene.background = new THREE.Color(0x1a0a0a);
+            scene.fog.far = 20;
+            player.position.set(0, 0.8, 0);
+            camera.position.copy(player.position).add(new THREE.Vector3(0,1.3,0));
+            platforms.forEach(p => p.mesh.visible = false);
+            water.visible = false;
+            particles.visible = false;
+            butterflies.forEach(b => b.sprite.visible = false);
+            houseGroup.visible = false;
+            triggerHouseScare();
+          }
+          
+          if (insideHouse) {
+            if (scareActive) {
+              scareTimer -= dt;
+              if (scareTimer <= 0) {
+                scareActive = false;
+                fireLight.intensity = 0.8;
+                glitchIntensity = 0.0;
+                triggerCrash();
+              } else {
+                glitchIntensity = 2.0 + Math.sin(t*0.05)*0.5;
+                fireLight.intensity = 1.5 + Math.random()*2.0;
+              }
+              breakables.forEach(b => {
+                b.vel.y += gravity * 0.5;
+                b.mesh.position.x += b.vel.x;
+                b.mesh.position.y += b.vel.y;
+                b.mesh.position.z += b.vel.z;
+                b.mesh.rotation.x += b.rotVel.x;
+                b.mesh.rotation.y += b.rotVel.y;
+                b.mesh.rotation.z += b.rotVel.z;
+                if (b.mesh.position.y < 0.2) { b.mesh.position.y = 0.2; b.vel.y *= -0.3; }
+                if (Math.abs(b.mesh.position.x) > 2.5) { b.vel.x *= -0.3; }
+                if (Math.abs(b.mesh.position.z) > 2.5) { b.vel.z *= -0.3; }
+                b.vel.multiplyScalar(0.98);
+                b.rotVel.multiplyScalar(0.98);
+              });
+            }
+            
+            const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); fwd.y=0; fwd.normalize();
+            const rgt = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); rgt.y=0; rgt.normalize();
+            const move = new THREE.Vector3();
+            if (keys.w) move.add(fwd); if (keys.s) move.sub(fwd); if (keys.a) move.sub(rgt); if (keys.d) move.add(rgt);
+            if (move.length()>0) { move.normalize(); vel.x=move.x*speed; vel.z=move.z*speed; }
+            else { vel.x*=0.8; vel.z*=0.8; }
+            vel.y += gravity;
+            player.position.x += vel.x * dt * 30;
+            player.position.z += vel.z * dt * 30;
+            player.position.y += vel.y;
+            if (player.position.y < 0.8) { player.position.y = 0.8; vel.y = 0; }
+            player.position.x = Math.max(-2.5, Math.min(2.5, player.position.x));
+            player.position.z = Math.max(-2.5, Math.min(2.5, player.position.z));
+            camera.position.copy(player.position).add(new THREE.Vector3(0,1.3,0));
+            
+            if (move.length()>0) {
+              footstepTimer += dt;
+              if (footstepTimer >= 0.35) { playSound('step'); footstepTimer = 0; }
+            }
+          } else {
+            // Exterior
+            const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); fwd.y=0; fwd.normalize();
+            const rgt = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); rgt.y=0; rgt.normalize();
+            const move = new THREE.Vector3();
+            if (keys.w) move.add(fwd); if (keys.s) move.sub(fwd); if (keys.a) move.sub(rgt); if (keys.d) move.add(rgt);
+            const isMoving = move.length() > 0;
+            if (isMoving) { move.normalize(); vel.x=move.x*speed; vel.z=move.z*speed; }
+            else { vel.x*=0.8; vel.z*=0.8; }
+            vel.y += gravity;
+            const test = player.position.clone(); test.y += vel.y;
+            const grounded = collide(test, vel);
+            if (grounded && keys.space) { vel.y = jump; keys.space = 0; playSound('jump'); }
+            if (grounded && isMoving) {
+              footstepTimer += dt;
+              if (footstepTimer >= 0.35) { playSound('step'); footstepTimer = 0; }
+            } else footstepTimer = 0;
+            const np = player.position.clone();
+            np.x += vel.x; np.z += vel.z; np.y += vel.y;
+            collide(np, vel);
+            player.position.copy(np);
+            camera.position.copy(player.position).add(new THREE.Vector3(0,1.3,0));
+            
+            if (player.position.y < -20) {
+              player.position.set(0,0.8,0); vel.set(0,0,0);
+              floatText('↻', player.position);
+            }
+            
+            collectibles.forEach(c => {
+              c.mesh.rotation.y += 0.02; c.mesh.rotation.x += 0.01;
+              c.mesh.position.y += Math.sin(t*0.01 + c.phase)*0.005;
+              c.light.position.copy(c.mesh.position);
+              if (player.position.distanceTo(c.mesh.position) < 2.3) {
+                score++; scoreEl.textContent = score; updProg(); floatText('+1', c.mesh.position);
+                playSound('collect');
+                const idx = (score-1) % cubePos.length;
+                c.mesh.position.set(cubePos[idx][0], cubePos[idx][1]+0.8, cubePos[idx][2]);
+                c.light.position.copy(c.mesh.position);
+              }
+            });
+            particles.rotation.y += 0.0003;
+            water.position.y = -3.5 + Math.sin(t*0.002)*0.1;
+            butterflies.forEach(b => {
+              b.angle += b.speed * dt * 30;
+              b.sprite.position.x += Math.cos(b.angle)*0.02;
+              b.sprite.position.z += Math.sin(b.angle)*0.02;
+              b.sprite.position.y = b.height + Math.sin(t*0.003 + b.angle)*1.5;
+              if (b.sprite.position.x > 80 || b.sprite.position.x < -80) b.angle += Math.PI;
+              if (b.sprite.position.z > 80 || b.sprite.position.z < -80) b.angle += Math.PI;
+            });
+          }
+        }
+        
+        glitchPass.uniforms.intensity.value = glitchIntensity;
+        glitchPass.uniforms.time.value = performance.now() * 0.001;
+        
+        composer.render();
+        cssRenderer.render(scene, camera);
+      } else {
+        requestAnimationFrame(animate);
+      }
+    }
+    animate();
+    updProg();
+
+    window.addEventListener('resize', () => { 
+      camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); 
+      renderer.setSize(innerWidth, innerHeight); cssRenderer.setSize(innerWidth, innerHeight); 
+      composer.setSize(innerWidth, innerHeight); 
+    });
+    window.addEventListener('keydown', e => { 
+      if (e.code==='KeyR' && gameStarted && !insideHouse && !crashed) { 
+        score=0; scoreEl.textContent='0'; player.position.set(0,0.8,0); vel.set(0,0,0); 
+        collectibles.forEach((c,i)=> { c.mesh.position.set(cubePos[i][0], cubePos[i][1]+0.8, cubePos[i][2]); c.light.position.copy(c.mesh.position); }); 
+        updProg(); floatText('RESET', player.position); 
+      } 
+    });
+  </script>
+</body>
+</html>
