@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>🌄 Sky Parkour · Keyboard Only</title>
+  <title>🌄 Sky Parkour · Error Dialog</title>
   <style>
-    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'Poppins', monospace; }
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'Poppins', sans-serif; }
     #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
     #ui-container { position: absolute; top: 20px; left: 20px; background: rgba(10,20,40,0.5); backdrop-filter: blur(8px); color: white; padding: 14px 28px; border-radius: 50px; border-left: 6px solid #ffb347; box-shadow: 0 8px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 15px; pointer-events: none; }
     #score { font-size: 2.8rem; font-weight: 800; color: #ffe066; text-shadow: 0 0 25px #ff9900; }
@@ -21,23 +21,55 @@
       font-size: 1.4rem; font-weight: bold; backdrop-filter: blur(5px); border: 2px solid #ffb347;
       pointer-events: none; z-index: 15; display: none;
     }
+    /* Windows 11-style error overlay */
     #crash-overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: #0a0a0a; color: #ff3333; display: none;
+      background: rgba(0,0,0,0.8); display: none;
       flex-direction: column; justify-content: center; align-items: center;
-      z-index: 100; font-family: 'Courier New', monospace; text-shadow: 0 0 10px red;
-      pointer-events: none;
+      z-index: 100; font-family: 'Segoe UI', 'Poppins', sans-serif;
+      pointer-events: auto;
     }
-    #crash-overlay h1 { font-size: 4rem; margin-bottom: 20px; animation: glitchText 0.2s infinite; }
-    #crash-overlay p { font-size: 1.5rem; opacity: 0.8; }
-    #crash-timer { font-size: 2rem; margin-top: 20px; color: #ffaa00; }
-    @keyframes glitchText {
-      0% { transform: translate(0); }
-      20% { transform: translate(-2px, 2px); }
-      40% { transform: translate(2px, -2px); }
-      60% { transform: translate(-2px, -2px); }
-      80% { transform: translate(2px, 2px); }
-      100% { transform: translate(0); }
+    .error-dialog {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+      padding: 32px;
+      max-width: 420px;
+      text-align: center;
+      color: #1a1a1a;
+      pointer-events: auto;
+    }
+    .error-dialog h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      color: #0a0a0a;
+    }
+    .error-dialog p {
+      font-size: 1rem;
+      color: #333;
+      margin: 0 0 24px 0;
+      line-height: 1.4;
+    }
+    .error-dialog .error-icon {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+      color: #d32f2f;
+    }
+    #error-ok-btn {
+      background: #0078d4;
+      color: white;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.1s;
+      letter-spacing: 0.3px;
+    }
+    #error-ok-btn:hover {
+      background: #106ebe;
     }
     #main-menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 30% 40%, #1a3a5c, #0a1a2a); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; pointer-events: auto; color: white; font-family: 'Poppins', sans-serif; }
     #game-title { font-size: 6rem; font-weight: 900; text-shadow: 4px 4px 0 #0a1a2a, 10px 10px 30px #000; margin-bottom: 20px; background: linear-gradient(145deg, #ffe68f, #ffb347); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: 6px; }
@@ -66,10 +98,14 @@
     <div id="crosshair"></div>
     <div id="interaction-prompt">🚪 Press E to enter</div>
   </div>
+  <!-- Windows 11 style error overlay -->
   <div id="crash-overlay">
-    <h1>💀 CRITICAL ERROR 💀</h1>
-    <p>SYSTEM FAILURE · MEMORY CORRUPTED</p>
-    <p id="crash-timer">Redirecting in 5...</p>
+    <div class="error-dialog">
+      <div class="error-icon">⚠️</div>
+      <h2>Your game has run into a problem</h2>
+      <p>Something went wrong and the game cannot continue. Please click OK to restart.</p>
+      <button id="error-ok-btn">OK</button>
+    </div>
   </div>
 
   <script type="importmap">
@@ -153,7 +189,7 @@
     const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 300);
     camera.position.set(0, 1.6, 0);
     let yaw = 0, pitch = 0;
-    const arrowSensitivity = 0.04; // Radians per frame for arrow keys
+    const arrowSensitivity = 0.04;
     
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
@@ -164,10 +200,7 @@
     pixelatePass.renderToScreen = true;
     composer.addPass(pixelatePass);
 
-    // No pointer lock needed, so we skip those event listeners.
-    // Instead, we'll handle arrow keys for camera.
-
-    // Lighting (unchanged)
+    // Lighting
     scene.add(new THREE.AmbientLight(0x7c8a9a, 0.4));
     const sun = new THREE.DirectionalLight(0xffe6cc, 1.5);
     sun.position.set(30, 25, 20);
@@ -250,7 +283,7 @@
       createRockyIsland(4.5,4.5,11.4,110,5.5,0xac9c8c), createRockyIsland(5.5,5.5,12,117,2.5,0xffd68a)
     ];
 
-    // House exterior (unchanged)
+    // House exterior
     const housePos = platData[22];
     const houseGroup = new THREE.Group();
     const wallMat = new THREE.MeshStandardMaterial({ color: 0xd4a76a, roughness: 0.6 });
@@ -284,7 +317,7 @@
     houseLight.position.set(housePos.x, housePos.topY+1.5, housePos.z+1.5);
     scene.add(houseLight);
 
-    // Interior (unchanged)
+    // Interior
     const interiorGroup = new THREE.Group();
     interiorGroup.position.set(0, -50, 0);
     const floor = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0x8b6e4c }));
@@ -340,7 +373,7 @@
     interiorGroup.visible = false;
     scene.add(interiorGroup);
 
-    // Trees, bushes, butterflies (unchanged)
+    // Trees, bushes, butterflies
     function addTree(plat, ox, oz, s=1) {
       const x=plat.x+ox, z=plat.z+oz, y=plat.topY;
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4*s,0.5*s,2.2*s,6), new THREE.MeshStandardMaterial({color:0x7a5a3a,roughness:0.9}));
@@ -401,7 +434,6 @@
     
     const vel = new THREE.Vector3();
     const gravity = -0.016, jump = 0.34, speed = 0.16;
-    // Input state: we'll also handle arrow keys for looking
     const keys = { w:0,a:0,s:0,d:0,space:0, e: false, arrowUp: false, arrowDown: false, arrowLeft: false, arrowRight: false };
     let insideHouse = false;
     let scareActive = false;
@@ -409,7 +441,11 @@
     let crashed = false;
     const promptEl = document.getElementById('interaction-prompt');
     const crashOverlay = document.getElementById('crash-overlay');
-    const timerEl = document.getElementById('crash-timer');
+    const errorOkBtn = document.getElementById('error-ok-btn');
+    
+    errorOkBtn.addEventListener('click', () => {
+      window.location.reload();
+    });
     
     window.addEventListener('keydown', e => {
       if (!gameStarted || crashed) return;
@@ -510,24 +546,12 @@
       }
     }
 
-    let redirectTimer = null;
     function triggerCrash() {
       crashed = true;
       crashOverlay.style.display = 'flex';
       renderer.domElement.style.pointerEvents = 'none';
       if (audioCtx) audioCtx.suspend();
-      
-      let secondsLeft = 5;
-      timerEl.textContent = `Redirecting in ${secondsLeft}...`;
-      redirectTimer = setInterval(() => {
-        secondsLeft--;
-        if (secondsLeft <= 0) {
-          clearInterval(redirectTimer);
-          window.location.href = "https://krisxxxllkrisipurvanov-cpu.github.io/Windows-Server-2026/";
-        } else {
-          timerEl.textContent = `Redirecting in ${secondsLeft}...`;
-        }
-      }, 1000);
+      // No redirect, just show the dialog
     }
 
     function triggerHouseScare() {
@@ -547,7 +571,6 @@
       gameStarted = true;
       document.getElementById('main-menu').style.display = 'none';
       document.getElementById('game-ui').classList.remove('game-ui-hidden');
-      // No pointer lock needed
       player.position.set(0,0.8,0); vel.set(0,0,0);
       score=0; scoreEl.textContent='0';
       collectibles.forEach((c,i)=> { c.mesh.position.set(cubePos[i][0], cubePos[i][1]+0.8, cubePos[i][2]); c.light.position.copy(c.mesh.position); });
@@ -562,9 +585,9 @@
         const t = performance.now(), dt = Math.min(16, t-lt)/1000; lt = t;
         requestAnimationFrame(animate);
         if (gameStarted) {
-          // Camera rotation via arrow keys (REVERSED left/right)
-          if (keys.arrowLeft) yaw += arrowSensitivity;   // left arrow now turns right
-          if (keys.arrowRight) yaw -= arrowSensitivity;  // right arrow now turns left
+          // Reversed arrow keys
+          if (keys.arrowLeft) yaw += arrowSensitivity;
+          if (keys.arrowRight) yaw -= arrowSensitivity;
           if (keys.arrowUp) pitch = Math.min(pitch + arrowSensitivity, maxPitch);
           if (keys.arrowDown) pitch = Math.max(pitch - arrowSensitivity, -maxPitch);
           camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
