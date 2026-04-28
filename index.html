@@ -562,9 +562,9 @@
         const t = performance.now(), dt = Math.min(16, t-lt)/1000; lt = t;
         requestAnimationFrame(animate);
         if (gameStarted) {
-          // Camera rotation via arrow keys
-          if (keys.arrowLeft) yaw -= arrowSensitivity;
-          if (keys.arrowRight) yaw += arrowSensitivity;
+          // Camera rotation via arrow keys (REVERSED left/right)
+          if (keys.arrowLeft) yaw += arrowSensitivity;   // left arrow now turns right
+          if (keys.arrowRight) yaw -= arrowSensitivity;  // right arrow now turns left
           if (keys.arrowUp) pitch = Math.min(pitch + arrowSensitivity, maxPitch);
           if (keys.arrowDown) pitch = Math.max(pitch - arrowSensitivity, -maxPitch);
           camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
